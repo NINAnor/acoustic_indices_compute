@@ -19,6 +19,7 @@ pip install -r requirements.txt
 List the files you want to analyze in a `files_to_analyze.csv` file in the form:
 
 | filename |
+|-----------|
 | filecache::ssh://user:password@host/device/2022-10-24T19_36_53.317Z.mp3 |
 | filecache::ssh://user:password@host/device/2022-10-24T19_01_36.412Z.mp3 |
 | filecache::ssh://user:password@host/device/2022-10-24T11_07_50.161Z.mp3 |
