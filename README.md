@@ -4,7 +4,7 @@ This repository contains a minimal wrapper around [Maad](https://scikit-maad.git
 
 Note that the code makes use of [fsspec](https://filesystem-spec.readthedocs.io/en/latest/) so that the analysis can be done on files from a remote server.
 
-## How to use the script
+## How to use the scripts
 
 ### Install the dependancies:
 
@@ -28,6 +28,15 @@ List the files you want to analyze in a `files_to_analyze.csv` file in the form:
 
 ### Run the script
 
+If you want to obtain the acoustic indices for your files:
+
 ```
-python3 main.py
+python3 compute_indices.py
 ```
+
+If you want to compute the VGGish features for your audio files:
+
+```
+python3 vggish_embeddings.py
+```
+
