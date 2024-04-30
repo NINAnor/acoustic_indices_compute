@@ -1,25 +1,17 @@
-import logging
+import sys
 import os
-
-import fsspec
-import librosa
-import maad
+import logging
 import pandas as pd
 from dotenv import load_dotenv
 from maad import features, sound
 
-from _utils import (add_to_processed_files, get_processed_files, read_df,
-                    read_file)
+from _utils import add_to_processed_files, get_processed_files, read_file
 
 load_dotenv()
 
-
 def compute_indices(wave, fs, G, S):
 
-    # TEMPORAL_FEATURES=['ZCR','MEANt', 'VARt', 'SKEWt', 'KURTt',
-    #'LEQt','BGNt', 'SNRt','MED', 'Ht','ACTtFraction', 'ACTtCount',
-    #'ACTtMean','EVNtFraction', 'EVNtMean', 'EVNtCount'
-    # ]
+    # Code borrowed from: https://scikit-maad.github.io/_auto_examples/2_advanced/plot_extract_alpha_indices.html
 
     # Compute the temporal indices
     df_audio_ind = features.all_temporal_alpha_indices(
@@ -45,14 +37,6 @@ def compute_indices(wave, fs, G, S):
         savefig=None,
     )
 
-    # SPECTRAL_FEATURES=['MEANf','VARf','SKEWf','KURTf','NBPEAKS','LEQf',
-    #'ENRf','BGNf','SNRf','Hf', 'EAS','ECU','ECV','EPS','EPS_KURT','EPS_SKEW','ACI',
-    #'NDSI','rBA','AnthroEnergy','BioEnergy','BI','ROU','ADI','AEI','LFC','MFC','HFC',
-    #'ACTspFract','ACTspCount','ACTspMean', 'EVNspFract','EVNspMean','EVNspCount',
-    #'TFSD','H_Havrda','H_Renyi','H_pairedShannon', 'H_gamma', 'H_GiniSimpson','RAOQ',
-    #'AGI','ROItotal','ROIcover'
-    # ]
-
     # Compute the spectral indices:
     df_spec_ind, df_spec_ind_per_bin = features.all_spectral_alpha_indices(
         Sxx_power=Sxx_power,
@@ -69,43 +53,25 @@ def compute_indices(wave, fs, G, S):
 
     return pd.concat([df_spec_ind, df_audio_ind], axis=1)
 
+def process_file(filename, G, S, processed_path, results_file):
+    if filename in get_processed_files(processed_path):
+        print(f"{filename} has already been analyzed. Skipping.")
+        return
 
-def main(dfpath, G, S):
+    print(f"Processing {filename}")
+    wave, fs = read_file(filename)
+    df_spec_file = compute_indices(wave, fs, G, S)
+    df_spec_file["filename"] = filename
 
-    processed_path = "processed_files.txt"
-    results_file = "analysis_results.csv"
-
-    df = read_df(dfpath)
-    processed_files = get_processed_files(processed_path)
-    df_indices_all = pd.DataFrame()
-
-    for index, row in df.iterrows():
-
-        filename = row["filename"]
-        if filename in processed_files:
-            print(f"{filename} has already been analyzed. Skipping.")
-            continue
-
-        try:
-            wave, fs = read_file(filename)
-        except Exception as e:
-            df.drop(index, inplace=True)
-            print(f"{filename} failed to be analyzed")
-            logging.error(f"{filename} failed to be analyzed: {str(e)}")
-
-        df_spec_file = compute_indices(wave, fs, G, S)
-        df_spec_file["filename"] = filename
-        df_indices_all = pd.concat([df_indices_all, df_spec_file])
-        add_to_processed_files(filename, processed_path)
-
-        # Save the DataFrame after processing each file
-        df_indices_all.to_csv(results_file, index=False)
-
+    # Append results to the CSV file
+    df_spec_file.to_csv(results_file, mode='a', header=not os.path.exists(results_file), index=False)
+    add_to_processed_files(filename, processed_path)
 
 if __name__ == "__main__":
+    filename = sys.argv[1]
+    G = int(os.getenv("GAIN"))
+    S = int(os.getenv("SENSIBILITY"))
+    processed_path = "processed_files_indices.txt"
+    results_file = "analysis_results.csv"
 
-    main(
-        dfpath=os.getenv("FILES_TO_ANALYZE"),
-        G=int(os.getenv("GAIN")),
-        S=int(os.getenv("SENSIBILITY")),
-    )
+    process_file(filename, G, S, processed_path, results_file)
