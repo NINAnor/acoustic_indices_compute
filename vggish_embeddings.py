@@ -22,12 +22,7 @@ def save_embeddings(embedding, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     np.save(path, embedding.detach().numpy())  # Save the Numpy array
 
-def process_file(filename, processed_path, output_dir):
-    # Check if already processed
-    if filename in get_processed_files(processed_path):
-        print(f"{filename} has already been analyzed. Skipping.")
-        return
-    print(filename)
+def process_file(filename, output_dir):
     # Read audio file
     wave, fs = read_file(filename)  # sr=None to preserve original sampling rate
 
@@ -48,7 +43,6 @@ def process_file(filename, processed_path, output_dir):
     save_embeddings(embedding, embedding_path)
 
     # Mark as processed
-    add_to_processed_files(filename, processed_path)
     print(f"Embedding saved to {embedding_path}")
 
 def get_processed_files(processed_path):
@@ -59,13 +53,8 @@ def get_processed_files(processed_path):
         processed_files = []
     return processed_files
 
-def add_to_processed_files(filename, processed_path):
-    with open(processed_path, "a") as file:
-        file.write(filename + "\n")
-
 if __name__ == "__main__":
     # Expect command line arguments: file to process, processed files log, output directory
     filename = sys.argv[1]
-    processed_files_path = sys.argv[2]
-    output_directory = sys.argv[3]
-    process_file(filename, processed_files_path, output_directory)
+    OUTPUT_DIR="embeddings"
+    process_file(filename, OUTPUT_DIR)

@@ -9,6 +9,13 @@ from _utils import add_to_processed_files, get_processed_files, read_file
 
 load_dotenv()
 
+import logging
+logger = logging.getLogger(__name__)
+#logging.basicConfig(level=logging.INFO)
+
+import warnings
+warnings.filterwarnings("ignore")
+
 def compute_indices(wave, fs, G, S):
 
     # Code borrowed from: https://scikit-maad.github.io/_auto_examples/2_advanced/plot_extract_alpha_indices.html
@@ -54,18 +61,14 @@ def compute_indices(wave, fs, G, S):
     return pd.concat([df_spec_ind, df_audio_ind], axis=1)
 
 def process_file(filename, G, S, processed_path, results_file):
-    if filename in get_processed_files(processed_path):
-        print(f"{filename} has already been analyzed. Skipping.")
-        return
-
-    print(f"Processing {filename}")
+    logging.info(f"Processing {filename}")
     wave, fs = read_file(filename)
     df_spec_file = compute_indices(wave, fs, G, S)
     df_spec_file["filename"] = filename
 
     # Append results to the CSV file
-    df_spec_file.to_csv(results_file, mode='a', header=not os.path.exists(results_file), index=False)
-    add_to_processed_files(filename, processed_path)
+    #df_spec_file.to_csv(results_file, mode='a', header=not os.path.exists(results_file), index=False)
+    print(df_spec_file.to_csv(header=None, index=False), end='')
 
 if __name__ == "__main__":
     filename = sys.argv[1]
