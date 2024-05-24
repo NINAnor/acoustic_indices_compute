@@ -1,12 +1,17 @@
 #!/bin/bash
 
-# File containing the list of files to process
-FILE_LIST="files_to_analyze.csv"
-PROCESSED_FILES="processed_files.txt"
-OUTPUT_DIR="embeddings"
+export LC_ALL=C
 
-# Ensure output directory exists
-mkdir -p $OUTPUT_DIR
+# Load environment variables
+source .env
 
-# Read filenames from a CSV and run them through the Python script in parallel
-cat $FILE_LIST | parallel --bar -j 58 python vggish_embeddings.py {} $PROCESSED_FILES $OUTPUT_DIR
+# Files to process
+FILE_LIST="files_to_analyze_total.csv"
+
+# Run the script in parallel
+parallel --progress --eta --resume --joblog status_embeddings.txt python vggish_embeddings.py :::: $FILE_LIST
+
+# In bash use the following command:
+# time systemd-run --scope --user --property=CPUWeight=1 -- sh -c './run_parallel_embeddings.sh'
+
+

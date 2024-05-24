@@ -4,8 +4,10 @@ import logging
 import pandas as pd
 from dotenv import load_dotenv
 from maad import features, sound
+import maad
+import numpy as np
 
-from _utils import add_to_processed_files, get_processed_files, read_file
+from _utils import read_file
 
 load_dotenv()
 
@@ -16,65 +18,56 @@ logger = logging.getLogger(__name__)
 import warnings
 warnings.filterwarnings("ignore")
 
-def compute_indices(wave, fs, G, S):
+def compute_indices(wave, fs):
 
-    # Code borrowed from: https://scikit-maad.github.io/_auto_examples/2_advanced/plot_extract_alpha_indices.html
+    freq_limits = [1000, 10000]
 
-    # Compute the temporal indices
-    df_audio_ind = features.all_temporal_alpha_indices(
-        s=wave,
-        fs=fs,
-        gain=G,
-        sensibility=S,
-        dB_threshold=3,
-        rejectDuration=0.01,
-        verbose=False,
-        display=False,
-    )
-
-    # Compute the Power Spectrogram Density (PSD) : Sxx_power
     Sxx_power, tn, fn, ext = sound.spectrogram(
         x=wave,
         fs=fs,
         window="hann",
-        nperseg=1024,
-        noverlap=1024 // 2,
-        verbose=False,
-        display=False,
-        savefig=None,
+        flims=freq_limits,
     )
 
-    # Compute the spectral indices:
-    df_spec_ind, df_spec_ind_per_bin = features.all_spectral_alpha_indices(
-        Sxx_power=Sxx_power,
-        tn=tn,
-        fn=fn,
-        flim_low=[0, 1500],
-        flim_mid=[1500, 8000],
-        flim_hi=[8000, 20000],
-        gain=G,
-        sensitivity=S,
-        verbose=False,
-        display=False,
+    Sxx_amplitude, tn, fn, ext = sound.spectrogram(
+        x=wave,
+        fs=fs,
+        window="hann",
+        flims=freq_limits,
+        mode="amplitude"
     )
 
-    return pd.concat([df_spec_ind, df_audio_ind], axis=1)
+    Sxx_noNoise= maad.sound.median_equalizer(Sxx_power) 
+    Sxx_dB_noNoise = maad.util.power2dB(Sxx_noNoise)
 
-def process_file(filename, G, S, processed_path, results_file):
+    # Indices that need Sxx_dB_noNoise
+    EVNspFract_per_bin, EVNspMean_per_bin, EVNspCount_per_bin, EVNsp = maad.features.spectral_events(Sxx_dB_noNoise, dt=tn[1]-tn[0], dB_threshold=6, rejectDuration=0.1, display=False, extent=ext)  
+    LFC, MFC, HFC = maad.features.spectral_cover(Sxx_dB_noNoise, fn) 
+    ROItotal, ROIcover = maad.features.region_of_interest_index(Sxx_dB_noNoise, tn, fn, display=False)
+
+    # Indices that take sqrt(power spectrogram)
+    _, _ , ACI  = maad.features.acoustic_complexity_index(Sxx_amplitude)
+    BI = maad.features.bioacoustics_index(Sxx_amplitude,fn, flim=(1000, 10000),)
+    roughness = maad.features.surface_roughness(Sxx_amplitude, norm='global')
+
+
+    return pd.concat([pd.Series(np.mean(EVNsp)), 
+                      pd.Series(MFC), 
+                      pd.Series(ROItotal), 
+                      pd.Series(ROIcover), 
+                      pd.Series(ACI), pd.Series(BI), 
+                      pd.Series(np.mean(roughness))], 
+                      axis=1)
+
+def process_file(filename):
     logging.info(f"Processing {filename}")
     wave, fs = read_file(filename)
-    df_spec_file = compute_indices(wave, fs, G, S)
+    df_spec_file = compute_indices(wave, fs)
     df_spec_file["filename"] = filename
 
     # Append results to the CSV file
-    #df_spec_file.to_csv(results_file, mode='a', header=not os.path.exists(results_file), index=False)
     print(df_spec_file.to_csv(header=None, index=False), end='')
 
 if __name__ == "__main__":
     filename = sys.argv[1]
-    G = int(os.getenv("GAIN"))
-    S = int(os.getenv("SENSIBILITY"))
-    processed_path = "processed_files_indices.txt"
-    results_file = "analysis_results.csv"
-
-    process_file(filename, G, S, processed_path, results_file)
+    process_file(filename)
