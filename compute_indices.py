@@ -41,22 +41,52 @@ def compute_indices(wave, fs):
     Sxx_dB_noNoise = maad.util.power2dB(Sxx_noNoise)
 
     # Indices that need Sxx_dB_noNoise
-    EVNspFract_per_bin, EVNspMean_per_bin, EVNspCount_per_bin, EVNsp = maad.features.spectral_events(Sxx_dB_noNoise, dt=tn[1]-tn[0], dB_threshold=6, rejectDuration=0.1, display=False, extent=ext)  
+    EVNspFract, EVNspMean, EVNspCount, EVNsp = maad.features.spectral_events(Sxx_dB_noNoise, dt=tn[1]-tn[0], dB_threshold=6, rejectDuration=0, display=False, extent=ext)  
     LFC, MFC, HFC = maad.features.spectral_cover(Sxx_dB_noNoise, fn) 
-    ROItotal, ROIcover = maad.features.region_of_interest_index(Sxx_dB_noNoise, tn, fn, display=False)
+    ROItotal, ROIcover = maad.features.region_of_interest_index(Sxx_dB_noNoise, tn, fn, display=False, min_roi=164, max_roi=89870, max_ratio_xy=10)
 
     # Indices that take sqrt(power spectrogram)
     _, _ , ACI  = maad.features.acoustic_complexity_index(Sxx_amplitude)
     BI = maad.features.bioacoustics_index(Sxx_amplitude,fn, flim=(1000, 10000),)
     roughness = maad.features.surface_roughness(Sxx_amplitude, norm='global')
 
+    # Extract the temporal indices:
+    df_audio_ind = features.all_temporal_alpha_indices(
+        s=wave,
+        fs=fs,
+        dB_threshold=10,
+        rejectDuration=0.01,
+        verbose=False,
+        display=True,
+        Nt = 15000
+        )
 
-    return pd.concat([pd.Series(np.mean(EVNsp)), 
+    EVNtFraction = df_audio_ind.iloc[0]["EVNtFraction"]
+    EVNtMean = df_audio_ind.iloc[0]["EVNtMean"]
+    EVNtCount = df_audio_ind.iloc[0]["EVNtCount"]
+    ACTtCount = df_audio_ind.iloc[0]["ACTtCount"]
+    ACTtMean = df_audio_ind.iloc[0]["ACTtMean"]
+
+    return pd.concat([pd.Series(np.mean(EVNsp)),
+                      pd.Series(np.median(EVNsp)),
+                      pd.Series(np.std(EVNsp)), 
+                      pd.Series(np.std(EVNspFract)),
+                      pd.Series(np.std(EVNspMean)),
+                      pd.Series(np.std(EVNspCount)),
                       pd.Series(MFC), 
                       pd.Series(ROItotal), 
                       pd.Series(ROIcover), 
-                      pd.Series(ACI), pd.Series(BI), 
-                      pd.Series(np.mean(roughness))], 
+                      pd.Series(ACI), 
+                      pd.Series(BI), 
+                      pd.Series(np.mean(roughness)),
+                      pd.Series(np.median(roughness)),
+                      pd.Series(np.std(roughness)),
+                      pd.Series(EVNtFraction),
+                      pd.Series(EVNtMean),
+                      pd.Series(EVNtFraction),
+                      pd.Series(EVNtCount),
+                      pd.Series(ACTtCount),
+                      pd.Series(ACTtMean)], 
                       axis=1)
 
 def process_file(filename):
