@@ -63,7 +63,7 @@ llvmlite==0.42.0
 MarkupSafe==2.1.5
 matplotlib==3.8.4
 matplotlib-inline==0.1.7
-mistune==3.0.2
+mistune==3.3.0
 msgpack==1.0.8
 mypy-extensions==1.0.0
 nbclient==0.10.0
