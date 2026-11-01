@@ -64,7 +64,7 @@ MarkupSafe==2.1.5
 matplotlib==3.8.4
 matplotlib-inline==0.1.7
 mistune==3.0.2
-msgpack==1.0.8
+msgpack==1.2.3
 mypy-extensions==1.0.0
 nbclient==0.10.0
 nbconvert==7.16.3
